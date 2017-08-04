@@ -1,13 +1,4 @@
 import sys, readline
-"""
-Valid Token Types:
-".+" - STRING
-[-]?[0-9,.]+ - NUMBER
-variable style is 1 letter and then any combination of numbers/letters.
-a variable assignment is done using 'var' first, a space, then the name, space, equals, space, value
-a function call is ! and then a variable style name.
-a function definition starts with "define" and then a valid variable name, followed by brackets containing code, C style.
-"""
 
 digits = ["0","1","2","3","4","5","6","7","8","9"]
 letters = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ".lower() + "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -23,6 +14,15 @@ class Token(object):
 class Function(object):
     def __init__(self, code):
         self.code = code
+
+def get_var_type(var_value):
+    if(type(var_value) == str):
+        return "STRING"
+    elif(type(var_value) == float):
+        return "NUMBER"
+    elif(type(var_value) == Function):
+        return "FUN_DEF"
+
 
 def parse_char(code, pos):
     cur_char = code[pos]
@@ -151,6 +151,10 @@ def run_token(tkns, variables, pos):
                             elif(tkns[pos].type == "FUN_DEF"):
                                 variables[tkns[pos-4].value] = Function(tkns[pos].value)
                                 pos += 1
+                            elif(tkns[pos].type == "VAR"):
+                                var_value = variables[tkns[pos].value]
+                                variables[tkns[pos-4].value] = variables[tkns[pos].value]
+                                pos += 1
                             else:
                                 raise SyntaxError #no literal
                         else:
@@ -180,18 +184,16 @@ def run_token(tkns, variables, pos):
         exec(tkns[pos].value)
         pos += 1
     else:
-        raise SyntaxError(tkns[pos])
+        raise SyntaxError
     return [variables, pos]
 
-def run_tokens(tokens,debug=0):
+def run_tokens(tokens,variables,debug=0):
     if(debug):
         output = ""
         for x in tokens:
             output += str(x) + ", "
         print(output)
     pos = 0
-    variables = {}
-    functions = {}
     while(pos <= len(tokens)-1):
         try:
             response = run_token(tokens, variables, pos)
@@ -201,14 +203,19 @@ def run_tokens(tokens,debug=0):
         except IndexError:
             print("Unexpected EOL.")
             sys.exit(0)
+        except KeyError:
+            print("Nonexistent variable.")
+            sys.exit()
         variables = {**variables, **response[0]}
         pos = response[1]
     if(debug):
         print(variables)
+    return variables
 
 
 def run(code,debug=0):
     tokens = parse(code,debug=debug)
-    run_tokens(tokens,debug=debug)
+    variables = {}
+    variables = run_tokens(tokens,variables,debug=debug)
 
 run(input("> "),debug=1)
