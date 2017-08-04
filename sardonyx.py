@@ -90,9 +90,13 @@ def parse_char(code, pos):
         token.value = " "
         pos += 1
     elif(cur_char == "!"):
-        token.type = "FUN_CALL"
-        token.value = "!"
         pos += 1
+        if(code[pos] == "="):
+            token.type = "INEQUALITY"
+            token.value = "!="
+        else:
+            token.type = "FUN_CALL"
+            token.value = "!"
     elif(cur_char == ";"):
         token.type = "SEMICOLON"
         token.value = ";"
@@ -130,6 +134,24 @@ def parse_char(code, pos):
     elif(cur_char == ")"):
         token.type = "END_EXPR"
         pos += 1
+    elif(cur_char == "<"):
+        pos += 1
+        if(code[pos] == "="):
+            token.type = "LESSTHAN_EQUALTO"
+            token.value = "<="
+            pos += 1
+        else:
+            token.type = "LESSTHAN"
+            token.value = "<"
+    elif(cur_char == ">"):
+        pos += 1
+        if(code[pos] == "="):
+            token.type = "GREATERTHAN_EQUALTO"
+            token.value = ">="
+            pos += 1
+        else:
+            token.type = "GREATERTHAN"
+            token.value = ">"
     else:
         raise SyntaxError(pos)
     return (token, pos)
@@ -158,7 +180,7 @@ def parse(code,debug=0):
         pos = response[1]
     return tokens
 
-def run_token(tkns, variables, pos):
+def run_token(tkns, variables, pos, debug=0):
     cur_type = tkns[pos].type
     if(cur_type == "VAR_DEF"):
         pos += 1
@@ -191,6 +213,8 @@ def run_token(tkns, variables, pos):
                                 arg1 = tkns[pos]
                                 operator = tkns[pos+2]
                                 arg2 = tkns[pos+4]
+                                if(debug):
+                                    print("Executing expression: {} {} {}".format(arg1,operator,arg2))
                                 pos += 6
                                 if(arg1.type == "VAR"):
                                     value = variables[arg1.value]
@@ -220,6 +244,47 @@ def run_token(tkns, variables, pos):
                                         variables[varname] = 1
                                     else:
                                         variables[varname] = 0
+                                elif(operator.type == "INQUALITY"):
+                                    if(arg1.value != arg2.value):
+                                        variables[varname] = 1
+                                    else:
+                                        variables[varname] = 0
+                                elif(operator.type == "LESSTHAN"):
+                                    if(arg1.type != "NUMBER" or arg2.type != "NUMBER"):
+                                        raise SyntaxError(pos)
+                                    arg1.value = float(arg1.value)
+                                    arg2.value = float(arg2.value)
+                                    if(arg1.value < arg2.value):
+                                        variables[varname] = 1
+                                    else:
+                                        variables[varname] = 0
+                                elif(operator.type == "GREATERTHAN"):
+                                    if(arg1.type != "NUMBER" or arg2.type != "NUMBER"):
+                                        raise SyntaxError(pos)
+                                    arg1.value = float(arg1.value)
+                                    arg2.value = float(arg2.value)
+                                    if(arg1.value > arg2.value):
+                                        variables[varname] = 1
+                                    else:
+                                        variables[varname] = 0
+                                elif(operator.type <= "LESSTHAN_EQUALTO"):
+                                    if(arg1.type != "NUMBER" or arg2.type != "NUMBER"):
+                                        raise SyntaxError(pos)
+                                    arg1.value = float(arg1.value)
+                                    arg2.value = float(arg2.value)
+                                    if(arg1.value < arg2.value):
+                                        variables[varname] = 1
+                                    else:
+                                        variables[varname] = 0
+                                elif(operator.type == "GREATERTHAN_EQUALTO"):
+                                    if(arg1.type != "NUMBER" or arg2.type != "NUMBER"):
+                                        raise SyntaxError(pos)
+                                    arg1.value = float(arg1.value)
+                                    arg2.value = float(arg2.value)
+                                    if(arg1.value >= arg2.value):
+                                        variables[varname] = 1
+                                    else:
+                                        variables[varname] = 0
                             else:
                                 raise SyntaxError(pos) #no literal
                         else:
@@ -237,7 +302,7 @@ def run_token(tkns, variables, pos):
         if(tkns[pos].type == "VAR"):
             fun_name = tkns[pos].value
             tokens = parse(variables[fun_name].code)
-            variables = run_tokens(tokens,variables)
+            variables = run_tokens(tokens,variables,debug=debug)
             pos += 1
         else:
             raise SyntaxError(pos)
@@ -293,7 +358,7 @@ def run_tokens(tokens,variables,debug=0):
     pos = 0
     while(pos <= len(tokens)-1):
         try:
-            response = run_token(tokens, variables, pos)
+            response = run_token(tokens, variables, pos,debug=debug)
         except SyntaxError as e:
             print("Syntax error - those two things probably don't go next to each other.")
             if(debug):
@@ -348,6 +413,7 @@ if(__name__ == "__main__"):
     else:
         print("Starting shell. Type 'help' for help.")
         variables = {}
+        debug = 0
         while(1):
             cmd = input(">> ")
             if(cmd == "variables"):
@@ -357,5 +423,8 @@ if(__name__ == "__main__"):
             elif(cmd == "exit"):
                 print("Exiting.")
                 sys.exit(0)
+            elif(cmd == "debug"):
+                print("Toggled debug mode.")
+                debug = not(debug)
             else:
-                variables = run(cmd)
+                variables = run(cmd,debug=debug)
