@@ -482,7 +482,7 @@ if(__name__ == "__main__"):
         contents = find_imports(contents)
         contents = contents.replace("\n","")
         try:
-            print(run(contents,variables=variables,debug=debug))
+            print(run(contents,debug=debug))
         except KeyboardInterrupt:
             print("Exiting.")
             sys.exit(0)
