@@ -46,8 +46,6 @@ def parse_char(code, pos):
                 pos += 1
         elif(code[pos-1] == "+"):
             token.type = "ADD"
-        elif(code[pos-1] == "-"):
-            token.type = "SUB"
 
     elif(cur_char == "v"):
         pos += 1
@@ -72,6 +70,10 @@ def parse_char(code, pos):
         token.type = "EQUALS"
         token.value = "="
         pos += 1
+        if(code[pos] == "="):
+            token.type = "EQUALITY"
+            token.value = "=="
+            pos += 1
     elif(cur_char == " "):
         token.type = "SPACE"
         token.value = " "
@@ -117,15 +119,14 @@ def parse_char(code, pos):
     elif(cur_char == ")"):
         token.type = "END_EXPR"
         pos += 1
-    elif(cur_char == "*"):
-        token.type = "MULTIPLY"
+    elif(cur_char == "i"):
         pos += 1
-    elif(cur_char == "/"):
-        token.type = "DIVIDE"
-        pos += 1
-    elif(cur_char == "%"):
-        token.type = "MODULO"
-        pos += 1
+        if(code[pos] == "f"):
+            pos += 1
+            token.type = "IF"
+            token.value = "if"
+        else:
+            raise SyntaxError(pos)
     else:
         raise SyntaxError(pos)
     return (token, pos)
@@ -211,6 +212,11 @@ def run_token(tkns, variables, pos):
                                             raise SyntaxError(pos)
                                     else:
                                         raise SyntaxError(pos)
+                                elif(operator.type == "EQUALITY"):
+                                    if(arg1.value == arg2.value):
+                                        variables[varname] = 1
+                                    else:
+                                        variables[varname] = 0
                             else:
                                 raise SyntaxError(pos) #no literal
                         else:
@@ -239,6 +245,38 @@ def run_token(tkns, variables, pos):
     elif(cur_type == "PY_CALL"):
         exec(tkns[pos].value)
         pos += 1
+    elif(cur_type == "IF"):
+        pos += 1
+        if(tkns[pos].type == "SPACE"):
+            pos += 1
+            if(tkns[pos].type == "VAR"):
+                pos += 1
+                if(tkns[pos].type == "SPACE"):
+                    pos += 1
+                    if(tkns[pos].type == "FUN_CALL"):
+                        pos += 1
+                        if(tkns[pos].type == "VAR"):
+                            if(variables[tkns[pos-3].value] == 1):
+                                fun_name = tkns[pos].value
+                                tokens = parse(variables[fun_name].code)
+                                variables = run_tokens(tokens,variables)
+                                pos += 1
+                        elif(tkns[pos].type == "NUMBER"):
+                            if(tkns[pos].value == 1):    
+                                fun_name = tkns[pos].value
+                                tokens = parse(variables[fun_name].code)
+                                variables = run_tokens(tokens,variables)
+                                pos += 1
+                        else:
+                            raise SyntaxError(pos)
+                    else:
+                        raise SyntaxError(pos)
+                else:
+                    raise SyntaxError(pos)
+            else:
+                raise SyntaxError(pos)
+        else:
+            raise SyntaxError(pos)
     else:
         raise SyntaxError(pos)(tkns[pos])
     return [variables, pos]
