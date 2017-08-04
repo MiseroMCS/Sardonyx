@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys, readline
 
 digits = ["0","1","2","3","4","5","6","7","8","9"]
@@ -320,3 +321,42 @@ def run(code,debug=0):
     variables = {}
     variables = run_tokens(tokens,variables,debug=debug)
     return variables
+
+def find_imports(contents):
+    lines = contents.split("\n")
+    if(lines[0].startswith("import ")):
+        imports = lines[0].replace("import ","").split(", ")
+        contents = contents.replace(lines[0],"")
+        for filename in imports:
+            try:
+                contents = find_imports(open(filename).read()) + contents
+            except FileNotFoundError:
+                print("File '{}' not found. Aborting.".format(filename))
+                sys.exit(0)
+    return contents
+
+if(__name__ == "__main__"):
+    if(len(sys.argv) >= 2):
+        filename = sys.argv[1]
+        try:
+            contents = open(filename).read()
+        except:
+            print("File does not exist.")
+            sys.exit(0)
+        contents = find_imports(contents)
+        contents = contents.replace("\n","")
+        print(sardonyx.run(contents))
+    else:
+        print("Starting shell. Type 'help' for help.")
+        variables = {}
+        while(1):
+            cmd = input(">> ")
+            if(cmd == "variables"):
+                print(variables)
+            elif(cmd == "help"):
+                print("Type in code to run it.\nType 'variables' to view all of the variables currently being used.\nType 'exit' to exit the prompt.")
+            elif(cmd == "exit"):
+                print("Exiting.")
+                sys.exit(0)
+            else:
+                variables = run(cmd)
