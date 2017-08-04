@@ -35,11 +35,21 @@ def parse_char(code, pos):
             token.value += code[pos]
             pos += 1
         pos += 1
+    elif(cur_char == "i"):
+        pos += 1
+        if(code[pos] == "f"):
+            pos += 1
+            token.type = "IF"
+            token.value = "if"
+        else:
+            raise SyntaxError(pos)
     elif(cur_char in ["-","+"]):
         pos += 1
         if(code[pos] in digits):
             token.type = "NUMBER"
             token.value = code[pos]
+            if(code[pos-1] == "-"):
+                token.value = "-" + code[pos]
             pos += 1
             while(code[pos] in digits):
                 token.value += code[pos]
@@ -119,14 +129,6 @@ def parse_char(code, pos):
     elif(cur_char == ")"):
         token.type = "END_EXPR"
         pos += 1
-    elif(cur_char == "i"):
-        pos += 1
-        if(code[pos] == "f"):
-            pos += 1
-            token.type = "IF"
-            token.value = "if"
-        else:
-            raise SyntaxError(pos)
     else:
         raise SyntaxError(pos)
     return (token, pos)
@@ -260,13 +262,13 @@ def run_token(tkns, variables, pos):
                                 fun_name = tkns[pos].value
                                 tokens = parse(variables[fun_name].code)
                                 variables = run_tokens(tokens,variables)
-                                pos += 1
+                            pos += 1
                         elif(tkns[pos].type == "NUMBER"):
-                            if(tkns[pos].value == 1):    
+                            if(tkns[pos].value == 1):
                                 fun_name = tkns[pos].value
                                 tokens = parse(variables[fun_name].code)
                                 variables = run_tokens(tokens,variables)
-                                pos += 1
+                            pos += 1
                         else:
                             raise SyntaxError(pos)
                     else:
@@ -278,7 +280,7 @@ def run_token(tkns, variables, pos):
         else:
             raise SyntaxError(pos)
     else:
-        raise SyntaxError(pos)(tkns[pos])
+        raise SyntaxError(pos)
     return [variables, pos]
 
 def run_tokens(tokens,variables,debug=0):
@@ -291,8 +293,15 @@ def run_tokens(tokens,variables,debug=0):
     while(pos <= len(tokens)-1):
         try:
             response = run_token(tokens, variables, pos)
-        except SyntaxError:
+        except SyntaxError as e:
             print("Syntax error - those two things probably don't go next to each other.")
+            if(debug):
+                output = ""
+                for i,x in enumerate(tokens):
+                    if(i == e.msg):
+                        output += "(HERE)"
+                    output += str(x) + ", "
+                print(output)
             raise
             sys.exit(0)
         except IndexError:
