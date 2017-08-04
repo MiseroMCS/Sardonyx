@@ -44,6 +44,11 @@ def parse_char(code, pos):
             while(code[pos] in digits):
                 token.value += code[pos]
                 pos += 1
+        elif(code[pos-1] == "+"):
+            token.type = "ADD"
+        elif(code[pos-1] == "-"):
+            token.type = "SUB"
+
     elif(cur_char == "v"):
         pos += 1
         if(code[pos] == "a"):
@@ -101,6 +106,21 @@ def parse_char(code, pos):
             pos += 1
         else:
             raise SyntaxError
+    elif(cur_char == "("):
+        token.type = "BEGIN_EXPR"
+        pos += 1
+    elif(cur_char == ")"):
+        token.type = "END_EXPR"
+        pos += 1
+    elif(cur_char == "*"):
+        token.type = "MULTIPLY"
+        pos += 1
+    elif(cur_char == "/"):
+        token.type = "DIVIDE"
+        pos += 1
+    elif(cur_char == "%"):
+        token.type = "MODULO"
+        pos += 1
     else:
         raise SyntaxError #this is the worst way of doing this
     return (token, pos)
@@ -142,19 +162,49 @@ def run_token(tkns, variables, pos):
                         pos += 1
                         if(tkns[pos].type == "SPACE"):
                             pos += 1
+                            varname = tkns[pos-4].value
                             if(tkns[pos].type == "STRING"):
-                                variables[tkns[pos-4].value] = tkns[pos].value
+                                variables[varname] = tkns[pos].value
                                 pos += 1
                             elif(tkns[pos].type == "NUMBER"):
-                                variables[tkns[pos-4].value] = float(tkns[pos].value)
+                                variables[varname] = float(tkns[pos].value)
                                 pos += 1
                             elif(tkns[pos].type == "FUN_DEF"):
-                                variables[tkns[pos-4].value] = Function(tkns[pos].value)
+                                variables[varname] = Function(tkns[pos].value)
                                 pos += 1
                             elif(tkns[pos].type == "VAR"):
                                 var_value = variables[tkns[pos].value]
-                                variables[tkns[pos-4].value] = variables[tkns[pos].value]
+                                variables[varname] = variables[tkns[pos].value]
                                 pos += 1
+                            elif(tkns[pos].type == "BEGIN_EXPR"):
+                                pos += 1
+                                arg1 = tkns[pos]
+                                operator = tkns[pos+2]
+                                arg2 = tkns[pos+4]
+                                pos += 6
+                                if(arg1.type == "VAR"):
+                                    value = variables[arg1.value]
+                                    arg1 = Token(get_var_type(value),value=value)
+                                if(arg2.type == "VAR"):
+                                    value = variables[arg2.value]
+                                    arg2 = Token(get_var_type(value),value=value)
+                                if(operator.type == "ADD"):
+                                    if(arg1.type == "NUMBER"):
+                                        if(arg2.type == "NUMBER"):
+                                            variables[varname] = float(arg1.value) + float(arg2.value)
+                                        elif(arg2.type == "STRING"):
+                                            variables[varname] = arg1.value + arg2.value
+                                        else:
+                                            raise SyntaxError
+                                    elif(arg1.type == "STRING"):
+                                        if(arg2.type == "STRING"):
+                                            variables[varname] = arg1.value + arg2.value
+                                        elif(arg2.type == "NUMBER"):
+                                            variables[varname] = arg1.value + arg2.value
+                                        else:
+                                            raise SyntaxError
+                                    else:
+                                        raise SyntaxError
                             else:
                                 raise SyntaxError #no literal
                         else:
@@ -184,7 +234,7 @@ def run_token(tkns, variables, pos):
         exec(tkns[pos].value)
         pos += 1
     else:
-        raise SyntaxError
+        raise SyntaxError(tkns[pos])
     return [variables, pos]
 
 def run_tokens(tokens,variables,debug=0):
@@ -199,6 +249,7 @@ def run_tokens(tokens,variables,debug=0):
             response = run_token(tokens, variables, pos)
         except SyntaxError:
             print("Syntax error - those two things probably don't go next to each other.")
+            raise
             sys.exit(0)
         except IndexError:
             print("Unexpected EOL.")
