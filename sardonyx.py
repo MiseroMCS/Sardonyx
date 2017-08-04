@@ -58,9 +58,9 @@ def parse_char(code, pos):
                 token.type = "VAR_DEF"
                 token.value = "var"
             else:
-                raise SyntaxError
+                raise SyntaxError(pos)
         else:
-            raise SyntaxError
+            raise SyntaxError(pos)
     elif(cur_char in letters):
         token.type = "VAR"
         token.value = code[pos]
@@ -94,18 +94,23 @@ def parse_char(code, pos):
                 pos += 1
             pos += 1
         else:
-            raise SyntaxError
+            raise SyntaxError(pos)
     elif(cur_char == "$"):
         pos += 1
         if(code[pos] == "{"):
             pos += 1
             token.type = "FUN_DEF"
-            while(code[pos] != "}"):
+            opened_braces = 0
+            while(code[pos] != "}" or opened_braces != 0):
+                if(code[pos] == "{"):
+                    opened_braces += 1
+                if(code[pos] == "}"):
+                    opened_braces -= 1
                 token.value += code[pos]
                 pos += 1
             pos += 1
         else:
-            raise SyntaxError
+            raise SyntaxError(pos)
     elif(cur_char == "("):
         token.type = "BEGIN_EXPR"
         pos += 1
@@ -122,7 +127,7 @@ def parse_char(code, pos):
         token.type = "MODULO"
         pos += 1
     else:
-        raise SyntaxError #this is the worst way of doing this
+        raise SyntaxError(pos)
     return (token, pos)
 
 def parse(code,debug=0):
@@ -136,8 +141,10 @@ def parse(code,debug=0):
                 raise
             print("Unexpected EOL.")
             sys.exit(0)
-        except SyntaxError:
-            print("Unknown character.")
+        except SyntaxError as e:
+            print("Unknown character '{}' (column {}).".format(code[e.msg],e.msg))
+            print(code)
+            print(" "*e.msg + "^")
             if(debug):
                 raise
             sys.exit(0)
@@ -145,7 +152,6 @@ def parse(code,debug=0):
             break
         tokens.append(response[0])
         pos = response[1]
-    print("Finished parsing.")
     return tokens
 
 def run_token(tkns, variables, pos):
@@ -195,37 +201,37 @@ def run_token(tkns, variables, pos):
                                         elif(arg2.type == "STRING"):
                                             variables[varname] = arg1.value + arg2.value
                                         else:
-                                            raise SyntaxError
+                                            raise SyntaxError(pos)
                                     elif(arg1.type == "STRING"):
                                         if(arg2.type == "STRING"):
                                             variables[varname] = arg1.value + arg2.value
                                         elif(arg2.type == "NUMBER"):
                                             variables[varname] = arg1.value + arg2.value
                                         else:
-                                            raise SyntaxError
+                                            raise SyntaxError(pos)
                                     else:
-                                        raise SyntaxError
+                                        raise SyntaxError(pos)
                             else:
-                                raise SyntaxError #no literal
+                                raise SyntaxError(pos) #no literal
                         else:
-                            raise SyntaxError #no space
+                            raise SyntaxError(pos) #no space
                     else:
-                        raise SyntaxError # no equals
+                        raise SyntaxError(pos) # no equals
                 else:
-                    raise SyntaxError #no var name
+                    raise SyntaxError(pos) #no var name
             else:
-                raise SyntaxError #no space
+                raise SyntaxError(pos) #no space
         else:
-            raise SyntaxError #no 'var'
+            raise SyntaxError(pos) #no 'var'
     elif(cur_type == "FUN_CALL"):
         pos += 1
         if(tkns[pos].type == "VAR"):
             fun_name = tkns[pos].value
             tokens = parse(variables[fun_name].code)
-            run_tokens(tokens)
+            variables = run_tokens(tokens,variables)
             pos += 1
         else:
-            raise SyntaxError
+            raise SyntaxError(pos)
     elif(cur_type == "SPACE"):
         pos += 1
     elif(cur_type == "SEMICOLON"):
@@ -234,7 +240,7 @@ def run_token(tkns, variables, pos):
         exec(tkns[pos].value)
         pos += 1
     else:
-        raise SyntaxError(tkns[pos])
+        raise SyntaxError(pos)(tkns[pos])
     return [variables, pos]
 
 def run_tokens(tokens,variables,debug=0):
@@ -259,8 +265,6 @@ def run_tokens(tokens,variables,debug=0):
             sys.exit()
         variables = {**variables, **response[0]}
         pos = response[1]
-    if(debug):
-        print(variables)
     return variables
 
 
@@ -268,5 +272,4 @@ def run(code,debug=0):
     tokens = parse(code,debug=debug)
     variables = {}
     variables = run_tokens(tokens,variables,debug=debug)
-
-run(input("> "),debug=1)
+    return variables
