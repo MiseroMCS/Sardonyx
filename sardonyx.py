@@ -303,7 +303,6 @@ def run_tokens(tokens,variables,debug=0):
                         output += "(HERE)"
                     output += str(x) + ", "
                 print(output)
-            raise
             sys.exit(0)
         except IndexError:
             print("Unexpected EOL.")
