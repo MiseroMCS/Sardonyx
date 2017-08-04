@@ -44,6 +44,26 @@ def parse_char(code, pos):
             token.value = "if"
         else:
             raise SyntaxError(pos)
+    elif(cur_char == "w"):
+        pos += 1
+        if(code[pos] == "h"):
+            pos += 1
+            if(code[pos] == "i"):
+                pos += 1
+                if(code[pos] == "l"):
+                    pos += 1
+                    if(code[pos] == "e"):
+                        token.type = "WHILE"
+                        token.value = "while"
+                        pos += 1
+                    else:
+                        raise SyntaxError(pos)
+                else:
+                    raise SyntaxError(pos)
+            else:
+                raise SyntaxError(pos)
+        else:
+            raise SyntaxError(pos)
     elif(cur_char in ["-","+"]):
         pos += 1
         if(code[pos] in digits):
@@ -52,7 +72,13 @@ def parse_char(code, pos):
             if(code[pos-1] == "-"):
                 token.value = "-" + code[pos]
             pos += 1
-            while(code[pos] in digits):
+            used_decimal = 0
+            while(code[pos] in digits + ["."]):
+                if(code[pos] == "."):
+                    if(used_decimal):
+                        raise SytaxError(pos)
+                    else:
+                        used_decimal = 1
                 token.value += code[pos]
                 pos += 1
         elif(code[pos-1] == "+"):
@@ -240,11 +266,19 @@ def run_token(tkns, variables, pos, debug=0):
                                     else:
                                         raise SyntaxError(pos)
                                 elif(operator.type == "EQUALITY"):
+                                    if(arg1.type == "NUMBER"):
+                                        arg1.value = float(arg1.value)
+                                    if(arg2.type == "NUMBER"):
+                                        arg2.value = float(arg2.value)
                                     if(arg1.value == arg2.value):
                                         variables[varname] = 1
                                     else:
                                         variables[varname] = 0
                                 elif(operator.type == "INQUALITY"):
+                                    if(arg1.type == "NUMBER"):
+                                        arg1.value = float(arg1.value)
+                                    if(arg2.type == "NUMBER"):
+                                        arg2.value = float(arg2.value)
                                     if(arg1.value != arg2.value):
                                         variables[varname] = 1
                                     else:
@@ -345,6 +379,38 @@ def run_token(tkns, variables, pos, debug=0):
                 raise SyntaxError(pos)
         else:
             raise SyntaxError(pos)
+    elif(cur_type == "WHILE"):
+        pos += 1
+        if(tkns[pos].type == "SPACE"):
+            pos += 1
+            if(tkns[pos].type == "VAR"):
+                pos += 1
+                if(tkns[pos].type == "SPACE"):
+                    pos += 1
+                    if(tkns[pos].type == "FUN_CALL"):
+                        pos += 1
+                        if(tkns[pos].type == "VAR"):
+                            while(variables[tkns[pos-3].value] == 1):
+                                fun_name = tkns[pos].value
+                                tokens = parse(variables[fun_name].code)
+                                variables = run_tokens(tokens,variables)
+                            pos += 1
+                        elif(tkns[pos].type == "NUMBER"):
+                            if(tkns[pos].value == 1):
+                                fun_name = tkns[pos].value
+                                tokens = parse(variables[fun_name].code)
+                                variables = run_tokens(tokens,variables)
+                            pos += 1
+                        else:
+                            raise SyntaxError(pos)
+                    else:
+                        raise SyntaxError(pos)
+                else:
+                    raise SyntaxError(pos)
+            else:
+                raise SyntaxError(pos)
+        else:
+            raise SyntaxError(pos)
     else:
         raise SyntaxError(pos)
     return [variables, pos]
@@ -372,17 +438,16 @@ def run_tokens(tokens,variables,debug=0):
         except IndexError:
             print("Unexpected EOL.")
             sys.exit(0)
-        except KeyError:
+        except KeyError as e:
             print("Nonexistent variable.")
-            sys.exit()
+            sys.exit(0)
         variables = {**variables, **response[0]}
         pos = response[1]
     return variables
 
 
-def run(code,debug=0):
+def run(code,variables={},debug=0):
     tokens = parse(code,debug=debug)
-    variables = {}
     variables = run_tokens(tokens,variables,debug=debug)
     return variables
 
@@ -390,17 +455,24 @@ def find_imports(contents):
     lines = contents.split("\n")
     if(lines[0].startswith("import ")):
         imports = lines[0].replace("import ","").split(", ")
-        contents = contents.replace(lines[0],"")
+        lines[0] = lines[0].replace(lines[0],"")
         for filename in imports:
             try:
-                contents = find_imports(open(filename).read()) + contents
+                lines = find_imports(open(filename).read()).split("\n") + lines
             except FileNotFoundError:
                 print("File '{}' not found. Aborting.".format(filename))
                 sys.exit(0)
-    return contents
+    for x in lines:
+        if(x.startswith("//")):
+            lines.remove(x)
+    return '\n'.join(lines)
 
 if(__name__ == "__main__"):
     if(len(sys.argv) >= 2):
+        debug = 0
+        if(len(sys.argv) >= 3):
+            if(sys.argv[2] == "debug"):
+                debug = 1
         filename = sys.argv[1]
         try:
             contents = open(filename).read()
@@ -409,7 +481,11 @@ if(__name__ == "__main__"):
             sys.exit(0)
         contents = find_imports(contents)
         contents = contents.replace("\n","")
-        print(sardonyx.run(contents))
+        try:
+            print(run(contents,variables=variables,debug=debug))
+        except KeyboardInterrupt:
+            print("Exiting.")
+            sys.exit(0)
     else:
         print("Starting shell. Type 'help' for help.")
         variables = {}
@@ -420,6 +496,16 @@ if(__name__ == "__main__"):
                 print(variables)
             elif(cmd == "help"):
                 print("Type in code to run it.\nType 'variables' to view all of the variables currently being used.\nType 'exit' to exit the prompt.")
+            elif(cmd.startswith("import ")):
+                cmd = cmd.replace("import ","")
+                try:
+                    contents = open(cmd).read()
+                except FileNotFoundError:
+                    print("File not found.")
+                    continue
+                contents = find_imports(contents)
+                contents = contents.replace("\n","")
+                variables = run(contents,variables=variables,debug=debug)
             elif(cmd == "exit"):
                 print("Exiting.")
                 sys.exit(0)
@@ -427,4 +513,4 @@ if(__name__ == "__main__"):
                 print("Toggled debug mode.")
                 debug = not(debug)
             else:
-                variables = run(cmd,debug=debug)
+                variables = run(cmd,variables=variables,debug=debug)
