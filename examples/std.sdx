@@ -1,0 +1,24 @@
+//Function Definitions
+var string1 = "";
+var print = ${
+  @{print(variables["string1"])}
+}
+
+var delay1 = +0;
+var delay = ${
+  @{import time;time.sleep(float(variables["delay1"]));}
+}
+
+var modulo1 = +0.0;
+var modulo2 = +0.0;
+var output1 = +0;
+var modulo = ${
+@{variables["output1"] = int(variables["modulo1"]) % int(variables["modulo2"])}
+}
+var stop = ${
+  @{sys.exit(0)}
+}
+
+//Useful variables.
+var true = +1;
+var false = +0;

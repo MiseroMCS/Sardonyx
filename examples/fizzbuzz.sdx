@@ -1,0 +1,37 @@
+import examples/std.sdx
+
+
+var fizz = ${
+  var string1 = (string1 + "Fizz");
+  !print;
+}
+var buzz = ${
+  var string1 = (string1 + "Buzz");
+  !print;
+}
+var number = ${
+  var string1 = modulo1;
+  !print;
+}
+var modulo1 = +0.0;
+var modulo2 = +5.0;
+var output1 = +0.0;
+var loop = ${
+  var string1 = "";
+  var modulo1 = (modulo1 + +1.0);
+  var modulo2 = +3.0;
+  !modulo;
+  var fizzed = (output1 == +0.0);
+  if fizzed !fizz;
+  var modulo2 = +5.0;
+  !modulo;
+  var buzzed = (output1 == +0.0);
+  if buzzed !buzz;
+  var none = (string1 == "");
+  if none !number;
+  var end = (modulo1 == +100);
+  if end !stop;
+  var delay1 = +0.01;
+  !delay;
+}
+while true !loop;

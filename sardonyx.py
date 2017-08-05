@@ -2,7 +2,7 @@
 import sys, readline
 
 digits = ["0","1","2","3","4","5","6","7","8","9"]
-letters = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ".lower() + "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+letters = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ".lower() + "ABCDEFGHIJKLMNOPQRSTUVWXYZ")  + ["_"]
 alphanumeric = digits + letters
 
 class Token(object):
@@ -440,6 +440,7 @@ def run_tokens(tokens,variables,debug=0):
             sys.exit(0)
         except KeyError as e:
             print("Nonexistent variable.")
+            raise
             sys.exit(0)
         variables = {**variables, **response[0]}
         pos = response[1]

@@ -1,0 +1,6 @@
+@{
+print("test");
+print("test2");
+if(1):
+    print("test");
+};
